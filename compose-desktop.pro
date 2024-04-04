@@ -1,0 +1,2 @@
+-dontwarn org.objectweb.asm.**
+-dontwarn org.jetbrains.annotations.*

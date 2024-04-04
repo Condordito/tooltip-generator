@@ -2,10 +2,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.material.TextFieldDefaults
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,9 +17,9 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.gson.JsonElement
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 
@@ -67,31 +64,29 @@ fun ChatComponent(element: JsonElement, fontSize: TextUnit, isRunning: MutableSt
 
 @Composable
 fun TooltipLine(text: String, isRunning: MutableState<Boolean>) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(55.dp)) {
+    val height = remember { (Util.TEXT_SIZE + 10).dp }
+    val textSize = remember { Util.TEXT_SIZE.sp }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(height)) {
         Util.convertFromLegacy(text)
             .let { MiniMessage.miniMessage().deserialize(it) }
             .let { GsonComponentSerializer.gson().serializeToTree(it) }
-            .let { ChatComponent(it, 40.sp, isRunning) }
+            .let { ChatComponent(it, textSize, isRunning) }
     }
 }
 
 @Composable
 fun CustomTextField(
-    maxInputSize: Int,
     placeholder: String,
-    maxLines: Int,
+    singleLine: Boolean = false,
     modifier: Modifier = Modifier,
     value: MutableState<String>,
     label: String,
 ) {
     OutlinedTextField(
         value = value.value,
-        onValueChange = {
-            if (it.length > maxInputSize) return@OutlinedTextField
-            value.value = it
-        },
+        onValueChange = { value.value = it },
         placeholder = { Text(placeholder) },
-        maxLines = maxLines,
+        singleLine = singleLine,
         modifier = modifier.fillMaxWidth().padding(vertical = 18.dp),
         colors = TextFieldDefaults.textFieldColors(
             textColor = Color.Black,
@@ -137,7 +132,6 @@ fun ImageComposable(
                 .border(7.dp, Util.LORE_BORDER_COLOR)
                 .background(Util.LORE_BG_COLOR)
                 .padding(20.dp)
-                .padding(end = 2.dp)
         ) {
             TooltipLine(title.value.takeIf { it.isNotBlank() } ?: Util.ITEM_TITLE, isRunning)
             Spacer(Modifier.height(16.dp))
@@ -146,4 +140,23 @@ fun ImageComposable(
             }.forEach { TooltipLine(it, isRunning) }
         }
     }
+}
+
+@Composable
+fun SaveButton(composable: @Composable () -> Unit, isRunning: MutableState<Boolean>) {
+    val scope = rememberCoroutineScope()
+    var isPressed by remember { mutableStateOf(false) }
+    Button(
+        onClick = {
+            if (isPressed) return@Button
+            isPressed = true
+            scope.launch { Util.saveOutput(composable, isRunning) }
+            scope.launch { delay(2000); isPressed = false }
+        },
+        modifier = Modifier.width(175.dp),
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = if (isPressed) Color(0xfff44336) else Color.DarkGray,
+            contentColor = Color.White
+        )
+    ) { Text("Save output") }
 }

@@ -23,6 +23,7 @@ dependencies {
     implementation("net.kyori:adventure-text-minimessage:4.16.0")
     implementation("net.kyori:adventure-text-serializer-gson:4.16.0")
     implementation("ir.mahozad.multiplatform:comshot:0.1.0")
+    implementation("com.madgag:animated-gif-lib:1.4")
 }
 
 compose.desktop {
@@ -31,8 +32,12 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            modules("java.sql")
             packageName = "tooltip"
             packageVersion = "1.0.0"
+        }
+        buildTypes.release.proguard {
+            configurationFiles.from(project.file("compose-desktop.pro"))
         }
     }
 }

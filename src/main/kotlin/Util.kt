@@ -1,9 +1,21 @@
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asSkiaBitmap
+import androidx.compose.ui.graphics.toAwtImage
+import androidx.compose.ui.graphics.toPixelMap
+import com.madgag.gif.fmsware.AnimatedGifEncoder
+import ir.mahozad.multiplatform.comshot.captureToImage
 import java.awt.Color
+import java.awt.image.BufferedImage
+import java.io.File
+import java.io.FileOutputStream
+import javax.imageio.ImageIO
 
 
 object Util {
-
-    const val WINDOW_RATIO = 0.9
+    const val TEXT_SIZE = 30
+    const val WINDOW_RATIO = 0.7
     const val ITEM_TITLE = "&fDiamond Sword"
     val ITEM_LORE = listOf(
         "&fWhen in main hand:",
@@ -12,7 +24,6 @@ object Util {
         "&8minecraft:diamond_sword",
         "&8NBT: 1 tag(s)"
     )
-    var MAGIC_CHARS: String = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789[]-_{}<>¡!¿?#$%&/();:"
     val LORE_BG_COLOR = androidx.compose.ui.graphics.Color.hsl(290f, .6f, 0.1f)
     val LORE_BORDER_COLOR = androidx.compose.ui.graphics.Color.hsl(270f, .9f, 0.3f)
 
@@ -35,8 +46,6 @@ object Util {
         "WHITE" to Color(255, 255, 255)
     )
 
-    private val LEGACY_FORMAT = "(?i)&([0-9a-fnmoklr])|&(#[0-9a-f]{6})".toRegex()
-
     private val LEGACY_COLOR_CODES: Map<Char, String> = mapOf(
         '0' to "<black>", '1' to "<dark_blue>",
         '2' to "<dark_green>", '3' to "<dark_aqua>",
@@ -50,6 +59,31 @@ object Util {
         'k' to "<obf>", 'o' to "<i>",
         'l' to "<b>", 'r' to "<reset>"
     )
+
+    private var MAGIC_CHARS: String = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789[]-_{}<>¡!¿?#$%&/();:"
+    private val LEGACY_FORMAT = "(?i)&([0-9a-fnmoklr])|&(#[0-9a-f]{6})".toRegex()
+
+    @Suppress("UNCHECKED_CAST")
+    fun saveOutput(composable: @Composable () -> Unit, isRunning: MutableState<Boolean>) {
+        var frames = List<Any>(5) {
+            isRunning.value = false
+            captureToImage(composable)
+        }.also { isRunning.value = true }
+        val equalFrames = equalFrames(frames as List<ImageBitmap>)
+        frames = frames.map { trimEmptySpace(it.toAwtImage()) }
+        if (equalFrames) {
+            File("tooltip.png").outputStream().use {
+                ImageIO.write(frames[0], "png", it)
+            }
+        } else {
+            val encoder = AnimatedGifEncoder()
+            encoder.start("tooltip.gif")
+            encoder.setDelay(50)
+            encoder.setRepeat(Int.MAX_VALUE)
+            frames.forEach { encoder.addFrame(it) }
+            encoder.finish()
+        }
+    }
 
     fun decreaseBrightness(
         color: androidx.compose.ui.graphics.Color,
@@ -67,4 +101,35 @@ object Util {
 
     fun randomString(length: Int): String =
         (1..length).map { MAGIC_CHARS.random() }.joinToString("")
+
+    private fun equalFrames(frames: List<ImageBitmap>) : Boolean {
+        val first = frames[0].toPixelMap().buffer
+        val second = frames[1].toPixelMap().buffer
+        return first contentEquals second
+    }
+
+    private fun trimEmptySpace(image: BufferedImage): BufferedImage {
+        // Find bounding box of non-transparent pixels
+        var minX = Int.MAX_VALUE
+        var minY = Int.MAX_VALUE
+        var maxX = Int.MIN_VALUE
+        var maxY = Int.MIN_VALUE
+
+        for (x in 0 until image.width) {
+            for (y in 0 until image.height) {
+                if (image.getRGB(x, y) and 0x00FFFFFF != 0) {
+                    minX = minOf(minX, x)
+                    minY = minOf(minY, y)
+                    maxX = maxOf(maxX, x)
+                    maxY = maxOf(maxY, y)
+                }
+            }
+        }
+
+        // Create trimmed image
+        val trimmedWidth = maxX - minX + 1
+        val trimmedHeight = maxY - minY + 1
+
+        return image.getSubimage(minX, minY, trimmedWidth, trimmedHeight)
+    }
 }
