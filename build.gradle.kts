@@ -22,6 +22,7 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation("net.kyori:adventure-text-minimessage:4.16.0")
     implementation("net.kyori:adventure-text-serializer-gson:4.16.0")
+    implementation("ir.mahozad.multiplatform:comshot:0.1.0")
 }
 
 compose.desktop {
