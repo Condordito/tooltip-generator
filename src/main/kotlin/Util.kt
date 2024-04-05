@@ -1,15 +1,14 @@
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.graphics.toPixelMap
-import com.madgag.gif.fmsware.AnimatedGifEncoder
 import ir.mahozad.multiplatform.comshot.captureToImage
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
 import java.io.FileOutputStream
+import java.io.OutputStream
 import javax.imageio.ImageIO
 
 
@@ -76,12 +75,11 @@ object Util {
                 ImageIO.write(frames[0], "png", it)
             }
         } else {
-            val encoder = AnimatedGifEncoder()
-            encoder.start("tooltip.gif")
-            encoder.setDelay(50)
-            encoder.setRepeat(Int.MAX_VALUE)
-            frames.forEach { encoder.addFrame(it) }
-            encoder.finish()
+            val writer = AnimatedGIFWriter(true)
+            val stream = FileOutputStream("animated.gif")
+            writer.prepareForWrite(stream, -1, -1)
+            frames.forEach { writer.writeFrame(stream, it, 50) }
+            writer.finishWrite(stream);
         }
     }
 
