@@ -8,13 +8,13 @@ import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.File
 import java.io.FileOutputStream
-import java.io.OutputStream
 import javax.imageio.ImageIO
 
 
 object Util {
     const val TEXT_SIZE = 30
-    const val WINDOW_RATIO = 0.7
+    const val WINDOW_WIDTH = 1000
+    const val WINDOW_HEIGHT = 600
     const val ITEM_TITLE = "&fDiamond Sword"
     val ITEM_LORE = listOf(
         "&fWhen in main hand:",
