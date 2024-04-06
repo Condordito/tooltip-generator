@@ -1,8 +1,6 @@
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toAwtImage
-import androidx.compose.ui.graphics.toPixelMap
 import ir.mahozad.multiplatform.comshot.captureToImage
 import java.awt.Color
 import java.awt.image.BufferedImage
@@ -12,7 +10,7 @@ import javax.imageio.ImageIO
 
 
 object Util {
-    const val TEXT_SIZE = 30
+    const val TEXT_SIZE = 12
     const val WINDOW_WIDTH = 1000
     const val WINDOW_HEIGHT = 600
     const val ITEM_TITLE = "&fDiamond Sword"
@@ -62,25 +60,16 @@ object Util {
     private var MAGIC_CHARS: String = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789[]-_{}<>¡!¿?#$%&/();:"
     private val LEGACY_FORMAT = "(?i)&([0-9a-fnmoklr])|&(#[0-9a-f]{6})".toRegex()
 
-    @Suppress("UNCHECKED_CAST")
-    fun saveOutput(composable: @Composable () -> Unit, isRunning: MutableState<Boolean>) {
-        var frames = List<Any>(5) {
-            isRunning.value = false
-            captureToImage(composable)
-        }.also { isRunning.value = true }
-        val equalFrames = equalFrames(frames as List<ImageBitmap>)
-        frames = frames.map { trimEmptySpace(it.toAwtImage()) }
-        if (equalFrames) {
-            File("tooltip.png").outputStream().use {
-                ImageIO.write(frames[0], "png", it)
-            }
-        } else {
-            val writer = AnimatedGIFWriter(true)
-            val stream = FileOutputStream("animated.gif")
-            writer.prepareForWrite(stream, -1, -1)
-            frames.forEach { writer.writeFrame(stream, it, 50) }
-            writer.finishWrite(stream);
-        }
+    fun saveOutput(composable: @Composable () -> Unit, isRunning: MutableState<Boolean>): Any {
+        val frames: List<BufferedImage> = captureFrames(isRunning, composable, 2)
+        val isImage = compareImages(frames[0], frames[1])
+        if (!isImage) frames + captureFrames(isRunning, composable, 3)
+        if (isImage) return saveImageTooltip(frames[0])
+        val writer = AnimatedGIFWriter(true)
+        val stream = FileOutputStream("animated.gif")
+        writer.prepareForWrite(stream, -1, -1)
+        frames.forEach { writer.writeFrame(stream, it, 50) }
+        return writer.finishWrite(stream)
     }
 
     fun decreaseBrightness(
@@ -100,34 +89,44 @@ object Util {
     fun randomString(length: Int): String =
         (1..length).map { MAGIC_CHARS.random() }.joinToString("")
 
-    private fun equalFrames(frames: List<ImageBitmap>) : Boolean {
-        val first = frames[0].toPixelMap().buffer
-        val second = frames[1].toPixelMap().buffer
-        return first contentEquals second
+    private fun captureFrames(
+        running: MutableState<Boolean>,
+        composable: @Composable () -> Unit,
+        amount: Int,
+    ): List<BufferedImage> {
+        return List(amount) {
+            running.value = false
+            val image = captureToImage(composable)
+            trimEmptySpace(image.toAwtImage())
+        }.also { running.value = true }
+    }
+
+    private fun compareImages(buffer1: BufferedImage, buffer2: BufferedImage): Boolean {
+        for (x in 0 until buffer1.width) {
+            for (y in 0 until buffer1.height) {
+                if (buffer1.getRGB(x, y) != buffer2.getRGB(x, y)) {
+                    return false
+                }
+            }
+        }
+        return true
     }
 
     private fun trimEmptySpace(image: BufferedImage): BufferedImage {
-        // Find bounding box of non-transparent pixels
-        var minX = Int.MAX_VALUE
-        var minY = Int.MAX_VALUE
-        var maxX = Int.MIN_VALUE
+        var maxX = Int.MIN_VALUE;
         var maxY = Int.MIN_VALUE
-
         for (x in 0 until image.width) {
             for (y in 0 until image.height) {
                 if (image.getRGB(x, y) and 0x00FFFFFF != 0) {
-                    minX = minOf(minX, x)
-                    minY = minOf(minY, y)
                     maxX = maxOf(maxX, x)
                     maxY = maxOf(maxY, y)
                 }
             }
         }
-
-        // Create trimmed image
-        val trimmedWidth = maxX - minX + 1
-        val trimmedHeight = maxY - minY + 1
-
-        return image.getSubimage(minX, minY, trimmedWidth, trimmedHeight)
+        return image.getSubimage(0, 0, ++maxX, ++maxY)
     }
+
+    private fun saveImageTooltip(buffer: BufferedImage) =
+        File("tooltip.png").outputStream()
+            .use { ImageIO.write(buffer, "png", it) }
 }

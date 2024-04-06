@@ -63,14 +63,12 @@ fun ChatComponent(element: JsonElement, fontSize: TextUnit, isRunning: MutableSt
 }
 
 @Composable
-fun TooltipLine(text: String, isRunning: MutableState<Boolean>) {
-    val height = remember { (Util.TEXT_SIZE + 10).dp }
-    val textSize = remember { Util.TEXT_SIZE.sp }
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(height)) {
+fun TooltipLine(text: String, isRunning: MutableState<Boolean>, textSize: MutableState<Int>) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height((textSize.value + 10).dp)) {
         Util.convertFromLegacy(text)
             .let { MiniMessage.miniMessage().deserialize(it) }
             .let { GsonComponentSerializer.gson().serializeToTree(it) }
-            .let { ChatComponent(it, textSize, isRunning) }
+            .let { ChatComponent(it, textSize.value.sp, isRunning) }
     }
 }
 
@@ -124,6 +122,7 @@ fun ImageComposable(
     title: MutableState<String>,
     lore: MutableState<String>,
     isRunning: MutableState<Boolean>,
+    textSize: MutableState<Int>,
 ): @Composable () -> Unit = remember {
     @Composable {
         Column(
@@ -133,11 +132,11 @@ fun ImageComposable(
                 .background(Util.LORE_BG_COLOR)
                 .padding(20.dp)
         ) {
-            TooltipLine(title.value.takeIf { it.isNotBlank() } ?: Util.ITEM_TITLE, isRunning)
+            TooltipLine(title.value.takeIf { it.isNotBlank() } ?: Util.ITEM_TITLE, isRunning, textSize)
             Spacer(Modifier.height(16.dp))
             let {
                 lore.value.takeIf { it.isNotBlank() }?.split("\n") ?: Util.ITEM_LORE
-            }.forEach { TooltipLine(it, isRunning) }
+            }.forEach { TooltipLine(it, isRunning, textSize) }
         }
     }
 }

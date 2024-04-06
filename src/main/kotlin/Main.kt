@@ -7,14 +7,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.*
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.window.application
 import java.awt.Dimension
+import java.awt.Toolkit
 
 @Composable
 fun ShadowedText(text: String, style: TextStyle) {
@@ -35,7 +42,8 @@ fun App() {
         val lore = remember { mutableStateOf("") }
         val weight = remember { mutableStateOf(1f) }
         val isRunning = remember { mutableStateOf(true) }
-        val composable = ImageComposable(title, lore, isRunning)
+        val textSize = remember { mutableStateOf(Util.TEXT_SIZE) }
+        val composable = ImageComposable(title, lore, isRunning, textSize)
 
         Row {
             GradientContainer(
@@ -59,7 +67,10 @@ fun App() {
                 )
                 SaveButton(composable, isRunning)
             }
-            GradientContainer(Modifier.weight(2f)) { composable() }
+            GradientContainer(Modifier.weight(2f, true).onSizeChanged { size ->
+                val delta = size.width.toFloat() * 0.0025
+                textSize.value = (Util.TEXT_SIZE * delta).toInt()
+            }) { composable() }
         }
     }
 }
@@ -74,8 +85,9 @@ fun main() = application {
         title = "Tooltip generator"
     ) {
         window.minimumSize = Dimension(
-            (Util.WINDOW_WIDTH * 0.8).toInt(),
-            (Util.WINDOW_HEIGHT * 0.8).toInt())
+            (Util.WINDOW_WIDTH * 0.85).toInt(),
+            (Util.WINDOW_HEIGHT * 0.85).toInt())
+        window.maximumSize = Toolkit.getDefaultToolkit().screenSize
         App()
     }
 }
