@@ -10,8 +10,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -21,6 +19,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.gson.JsonElement
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -32,8 +31,8 @@ fun ImageComposable(
     title: MutableState<String>,
     lore: MutableState<String>,
     isRunning: MutableState<Boolean>,
+    textSize: MutableState<Double>,
 ): @Composable () -> Unit {
-    val textSize = remember { mutableStateOf(Util.TEXT_SIZE) }
     return remember {
         @Composable {
             Column(
@@ -42,10 +41,6 @@ fun ImageComposable(
                     .border(7.dp, Util.LORE_BORDER_COLOR)
                     .background(Util.LORE_BG_COLOR)
                     .padding(20.dp)
-                    .onGloballyPositioned {
-                        val diff = it.parentLayoutCoordinates!!.size.width - it.size.width
-                        if (diff > 200) { textSize.value += 1 }
-                    }.graphicsLayer { clip = true }
             ) {
                 TooltipLine(title.value.takeIf { it.isNotBlank() } ?: Util.ITEM_TITLE, isRunning, textSize)
                 Spacer(Modifier.height(16.dp))
@@ -57,20 +52,14 @@ fun ImageComposable(
 }
 
 @Composable
-fun TooltipLine(text: String, isRunning: MutableState<Boolean>, textSize: MutableState<Int>) {
-    Row (
+fun TooltipLine(text: String, isRunning: MutableState<Boolean>, textSize: MutableState<Double>) {
+    Row(
         content = {
             Util.convertFromLegacy(text)
                 .let { MiniMessage.miniMessage().deserialize(it) }
                 .let { GsonComponentSerializer.gson().serializeToTree(it) }
                 .let { ChatComponent(it, textSize.value.sp, isRunning) }
-        }, modifier = Modifier
-            .height((textSize.value * 1.20).dp)
-            .wrapContentWidth(align = Alignment.Start, unbounded = true)
-            .onGloballyPositioned {
-                val diff = it.parentLayoutCoordinates!!.size.width - it.size.width
-                if (diff < 0) textSize.value -= 1
-            }
+        }
     )
 }
 
@@ -102,10 +91,12 @@ fun ChatComponent(element: JsonElement, fontSize: TextUnit, isRunning: MutableSt
 
 @Composable
 fun TextComposable(text: String, textStyle: TextStyle, obfuscated: Boolean = false, isRunning: MutableState<Boolean>) {
-    val style = textStyle.copy(shadow = Shadow(
-        Util.decreaseBrightness(textStyle.color, .5f),
-        Offset(4f, 4f)
-    ))
+    val style = textStyle.copy(
+        shadow = Shadow(
+            Util.decreaseBrightness(textStyle.color, .5f),
+            Offset(4f, 4f)
+        )
+    )
     if (!obfuscated) return Text(text, style = style)
     var value by remember { mutableStateOf(Util.randomString(text.length)) }
     LaunchedEffect(text) {
@@ -119,15 +110,25 @@ fun TextComposable(text: String, textStyle: TextStyle, obfuscated: Boolean = fal
 
 @Composable
 fun CustomTextField(
+    label: String,
     placeholder: String,
     singleLine: Boolean = false,
     modifier: Modifier = Modifier,
-    value: MutableState<String>,
-    label: String,
+    reference: MutableState<String>,
 ) {
+    var value by remember { mutableStateOf("") }
+    var debounceJob by remember { mutableStateOf<Job?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     OutlinedTextField(
-        value = value.value,
-        onValueChange = { value.value = it },
+        value = value,
+        onValueChange = {
+            value = it
+            debounceJob?.cancel()
+            debounceJob = coroutineScope.launch {
+                delay(500)
+                reference.value = value
+            }
+        },
         placeholder = { Text(placeholder) },
         singleLine = singleLine,
         modifier = modifier.fillMaxWidth().padding(vertical = 18.dp),

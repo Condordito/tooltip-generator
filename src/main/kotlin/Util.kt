@@ -8,9 +8,8 @@ import java.io.File
 import java.io.FileOutputStream
 import javax.imageio.ImageIO
 
-
 object Util {
-    const val TEXT_SIZE = 12
+    const val TEXT_SIZE = 12.0
     const val WINDOW_WIDTH = 1000
     const val WINDOW_HEIGHT = 600
     const val ITEM_TITLE = "&fDiamond Sword"
@@ -44,17 +43,28 @@ object Util {
     )
 
     private val LEGACY_COLOR_CODES: Map<Char, String> = mapOf(
-        '0' to "<black>", '1' to "<dark_blue>",
-        '2' to "<dark_green>", '3' to "<dark_aqua>",
-        '4' to "<dark_red>", '5' to "<dark_purple>",
-        '6' to "<gold>", '7' to "<gray>",
-        '8' to "<dark_gray>", '9' to "<blue>",
-        'a' to "<green>", 'b' to "<aqua>",
-        'c' to "<red>", 'd' to "<light_purple>",
-        'e' to "<yellow>", 'f' to "<white>",
-        'n' to "<u>", 'm' to "<st>",
-        'k' to "<obf>", 'o' to "<i>",
-        'l' to "<b>", 'r' to "<reset>"
+        '0' to "<black>",
+        '1' to "<dark_blue>",
+        '2' to "<dark_green>",
+        '3' to "<dark_aqua>",
+        '4' to "<dark_red>",
+        '5' to "<dark_purple>",
+        '6' to "<gold>",
+        '7' to "<gray>",
+        '8' to "<dark_gray>",
+        '9' to "<blue>",
+        'a' to "<green>",
+        'b' to "<aqua>",
+        'c' to "<red>",
+        'd' to "<light_purple>",
+        'e' to "<yellow>",
+        'f' to "<white>",
+        'n' to "<u>",
+        'm' to "<st>",
+        'k' to "<obf>",
+        'o' to "<i>",
+        'l' to "<b>",
+        'r' to "<reset>"
     )
 
     private var MAGIC_CHARS: String = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789[]-_{}<>¡!¿?#$%&/();:"
@@ -64,8 +74,7 @@ object Util {
         val frames: List<BufferedImage> = captureFrames(isRunning, composable, 2)
         val isImage = compareImages(frames[0], frames[1])
         if (!isImage) frames + captureFrames(isRunning, composable, 3)
-        if (isImage) return File("tooltip.png").outputStream()
-            .use { ImageIO.write(frames[0], "png", it) }
+        if (isImage) return File("tooltip.png").outputStream().use { ImageIO.write(frames[0], "png", it) }
         val writer = AnimatedGIFWriter(true)
         val stream = FileOutputStream("animated.gif")
         writer.prepareForWrite(stream, -1, -1)
@@ -77,9 +86,7 @@ object Util {
         color: androidx.compose.ui.graphics.Color,
         factor: Float,
     ): androidx.compose.ui.graphics.Color = color.copy(
-        red = color.red * factor,
-        green = color.green * factor,
-        blue = color.blue * factor
+        red = color.red * factor, green = color.green * factor, blue = color.blue * factor
     )
 
     fun convertFromLegacy(legacy: String) = LEGACY_FORMAT.replace(legacy) { result ->
@@ -87,8 +94,7 @@ object Util {
         LEGACY_COLOR_CODES[match[0]] ?: "<$match>"
     }
 
-    fun randomString(length: Int): String =
-        (1..length).map { MAGIC_CHARS.random() }.joinToString("")
+    fun randomString(length: Int): String = (1..length).map { MAGIC_CHARS.random() }.joinToString("")
 
     private fun captureFrames(
         running: MutableState<Boolean>,
@@ -114,7 +120,7 @@ object Util {
     }
 
     private fun trimEmptySpace(image: BufferedImage): BufferedImage {
-        var maxX = Int.MIN_VALUE;
+        var maxX = Int.MIN_VALUE
         var maxY = Int.MIN_VALUE
         for (x in 0 until image.width) {
             for (y in 0 until image.height) {
@@ -125,6 +131,22 @@ object Util {
             }
         }
         return image.getSubimage(0, 0, ++maxX, ++maxY)
+    }
+
+    fun resizeBox(parent: Int, child: Int, calculating: MutableState<Boolean>, textSize: MutableState<Double>) {
+        if (child < 200) return
+        val diff = parent - child
+        val resizingFactor = when {
+            diff < 50 -> 0.95
+            diff > 200 -> 1.05
+            else -> 1.0
+        }
+        if (resizingFactor == 1.0) {
+            calculating.value = false
+            return
+        }
+        calculating.value = true
+        textSize.value *= resizingFactor
     }
 
 }

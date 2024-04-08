@@ -2,6 +2,7 @@ import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -9,6 +10,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -25,9 +28,11 @@ fun App() {
         Row {
             val title = remember { mutableStateOf("") }
             val lore = remember { mutableStateOf("") }
-            val weight = remember { mutableStateOf(1f) }
+            val textSize = remember { mutableStateOf(Util.TEXT_SIZE) }
             val isRunning = remember { mutableStateOf(true) }
-            val composable = ImageComposable(title, lore, isRunning)
+            val composable = ImageComposable(title, lore, isRunning, textSize)
+            val weight = remember { mutableStateOf(1f) }
+
             GradientContainer(
                 Modifier.weight(weight.value).draggable(
                     orientation = Orientation.Horizontal,
@@ -38,18 +43,33 @@ fun App() {
                 ),
             ) {
                 CustomTextField(
+                    label = "Title",
                     placeholder = Util.ITEM_TITLE,
-                    label = "Title", value = title,
-                    singleLine = true
+                    singleLine = true,
+                    reference = title
                 )
                 CustomTextField(
+                    label = "Description",
                     placeholder = Util.ITEM_LORE.joinToString("\n"),
                     modifier = Modifier.weight(3f),
-                    label = "Description", value = lore
+                    reference = lore
                 )
                 SaveButton(composable, isRunning)
             }
-            GradientContainer(Modifier.weight(2f, true)) { composable() }
+            GradientContainer(Modifier.weight(2f, true)) {
+                val calculating = remember { mutableStateOf(false) }
+                Box(Modifier
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        Util.resizeBox(constraints.maxWidth, placeable.width, calculating, textSize)
+                        layout(placeable.width, placeable.height) {
+                            placeable.placeRelative(x = 0, y = 0)
+                        }
+                    }.drawWithContent {
+                        if (!calculating.value) drawContent()
+                    }
+                ) { composable() }
+            }
         }
     }
 }
@@ -65,7 +85,8 @@ fun main() = application {
     ) {
         window.minimumSize = Dimension(
             (Util.WINDOW_WIDTH * 0.85).toInt(),
-            (Util.WINDOW_HEIGHT * 0.85).toInt())
+            (Util.WINDOW_HEIGHT * 0.85).toInt()
+        )
         window.maximumSize = Toolkit.getDefaultToolkit().screenSize
         App()
     }
