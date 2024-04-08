@@ -6,8 +6,12 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -24,16 +28,50 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 
 @Composable
-fun TextComposable(text: String, textStyle: TextStyle, obfuscated: Boolean = false, isRunning: MutableState<Boolean>) {
-    if (!obfuscated) return ShadowedText(text, textStyle)
-    var value by remember { mutableStateOf(Util.randomString(text.length)) }
-    LaunchedEffect(text) {
-        while (isActive && isRunning.value) {
-            value = Util.randomString(text.length)
-            delay(60)
+fun ImageComposable(
+    title: MutableState<String>,
+    lore: MutableState<String>,
+    isRunning: MutableState<Boolean>,
+): @Composable () -> Unit {
+    val textSize = remember { mutableStateOf(Util.TEXT_SIZE) }
+    return remember {
+        @Composable {
+            Column(
+                modifier = Modifier
+                    .border(4.dp, Util.LORE_BG_COLOR)
+                    .border(7.dp, Util.LORE_BORDER_COLOR)
+                    .background(Util.LORE_BG_COLOR)
+                    .padding(20.dp)
+                    .onGloballyPositioned {
+                        val diff = it.parentLayoutCoordinates!!.size.width - it.size.width
+                        if (diff > 200) { textSize.value += 1 }
+                    }.graphicsLayer { clip = true }
+            ) {
+                TooltipLine(title.value.takeIf { it.isNotBlank() } ?: Util.ITEM_TITLE, isRunning, textSize)
+                Spacer(Modifier.height(16.dp))
+                val loreArray = lore.value.takeIf { it.isNotBlank() }?.split("\n") ?: Util.ITEM_LORE
+                loreArray.forEach { TooltipLine(it, isRunning, textSize) }
+            }
         }
     }
-    ShadowedText(value, textStyle.copy(fontFamily = FontFamily.Monospace))
+}
+
+@Composable
+fun TooltipLine(text: String, isRunning: MutableState<Boolean>, textSize: MutableState<Int>) {
+    Row (
+        content = {
+            Util.convertFromLegacy(text)
+                .let { MiniMessage.miniMessage().deserialize(it) }
+                .let { GsonComponentSerializer.gson().serializeToTree(it) }
+                .let { ChatComponent(it, textSize.value.sp, isRunning) }
+        }, modifier = Modifier
+            .height((textSize.value * 1.20).dp)
+            .wrapContentWidth(align = Alignment.Start, unbounded = true)
+            .onGloballyPositioned {
+                val diff = it.parentLayoutCoordinates!!.size.width - it.size.width
+                if (diff < 0) textSize.value -= 1
+            }
+    )
 }
 
 @Composable
@@ -63,13 +101,20 @@ fun ChatComponent(element: JsonElement, fontSize: TextUnit, isRunning: MutableSt
 }
 
 @Composable
-fun TooltipLine(text: String, isRunning: MutableState<Boolean>, textSize: MutableState<Int>) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height((textSize.value + 10).dp)) {
-        Util.convertFromLegacy(text)
-            .let { MiniMessage.miniMessage().deserialize(it) }
-            .let { GsonComponentSerializer.gson().serializeToTree(it) }
-            .let { ChatComponent(it, textSize.value.sp, isRunning) }
+fun TextComposable(text: String, textStyle: TextStyle, obfuscated: Boolean = false, isRunning: MutableState<Boolean>) {
+    val style = textStyle.copy(shadow = Shadow(
+        Util.decreaseBrightness(textStyle.color, .5f),
+        Offset(4f, 4f)
+    ))
+    if (!obfuscated) return Text(text, style = style)
+    var value by remember { mutableStateOf(Util.randomString(text.length)) }
+    LaunchedEffect(text) {
+        while (isActive && isRunning.value) {
+            value = Util.randomString(text.length)
+            delay(60)
+        }
     }
+    Text(value, style = style.copy(fontFamily = FontFamily.Monospace))
 }
 
 @Composable
@@ -113,30 +158,6 @@ fun GradientContainer(modifier: Modifier = Modifier, content: @Composable () -> 
             modifier = Modifier.padding(20.dp)
         ) {
             content()
-        }
-    }
-}
-
-@Composable
-fun ImageComposable(
-    title: MutableState<String>,
-    lore: MutableState<String>,
-    isRunning: MutableState<Boolean>,
-    textSize: MutableState<Int>,
-): @Composable () -> Unit = remember {
-    @Composable {
-        Column(
-            modifier = Modifier
-                .border(4.dp, Util.LORE_BG_COLOR)
-                .border(7.dp, Util.LORE_BORDER_COLOR)
-                .background(Util.LORE_BG_COLOR)
-                .padding(20.dp)
-        ) {
-            TooltipLine(title.value.takeIf { it.isNotBlank() } ?: Util.ITEM_TITLE, isRunning, textSize)
-            Spacer(Modifier.height(16.dp))
-            let {
-                lore.value.takeIf { it.isNotBlank() }?.split("\n") ?: Util.ITEM_LORE
-            }.forEach { TooltipLine(it, isRunning, textSize) }
         }
     }
 }

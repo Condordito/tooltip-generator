@@ -64,7 +64,8 @@ object Util {
         val frames: List<BufferedImage> = captureFrames(isRunning, composable, 2)
         val isImage = compareImages(frames[0], frames[1])
         if (!isImage) frames + captureFrames(isRunning, composable, 3)
-        if (isImage) return saveImageTooltip(frames[0])
+        if (isImage) return File("tooltip.png").outputStream()
+            .use { ImageIO.write(frames[0], "png", it) }
         val writer = AnimatedGIFWriter(true)
         val stream = FileOutputStream("animated.gif")
         writer.prepareForWrite(stream, -1, -1)
@@ -126,7 +127,4 @@ object Util {
         return image.getSubimage(0, 0, ++maxX, ++maxY)
     }
 
-    private fun saveImageTooltip(buffer: BufferedImage) =
-        File("tooltip.png").outputStream()
-            .use { ImageIO.write(buffer, "png", it) }
 }
