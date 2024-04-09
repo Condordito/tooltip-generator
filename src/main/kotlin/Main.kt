@@ -10,7 +10,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -57,16 +56,13 @@ fun App() {
                 SaveButton(composable, isRunning)
             }
             GradientContainer(Modifier.weight(2f, true)) {
-                val calculating = remember { mutableStateOf(false) }
                 Box(Modifier
                     .layout { measurable, constraints ->
-                        val placeable = measurable.measure(constraints)
-                        Util.resizeBox(constraints.maxWidth, placeable.width, calculating, textSize)
+                        val placeable = measurable.measure(constraints.copy(maxWidth = Int.MAX_VALUE))
+                        Util.resizeBox(constraints.maxWidth, placeable.width, textSize)
                         layout(placeable.width, placeable.height) {
                             placeable.placeRelative(x = 0, y = 0)
                         }
-                    }.drawWithContent {
-                        if (!calculating.value) drawContent()
                     }
                 ) { composable() }
             }

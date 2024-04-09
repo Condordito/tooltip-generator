@@ -7,11 +7,13 @@ import java.awt.image.BufferedImage
 import java.io.File
 import java.io.FileOutputStream
 import javax.imageio.ImageIO
+import kotlin.math.min
 
 object Util {
     const val TEXT_SIZE = 12.0
     const val WINDOW_WIDTH = 1000
     const val WINDOW_HEIGHT = 600
+    const val SHADOW_OFFSET = 3f
     const val ITEM_TITLE = "&fDiamond Sword"
     val ITEM_LORE = listOf(
         "&fWhen in main hand:",
@@ -69,14 +71,15 @@ object Util {
 
     private var MAGIC_CHARS: String = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789[]-_{}<>¡!¿?#$%&/();:"
     private val LEGACY_FORMAT = "(?i)&([0-9a-fnmoklr])|&(#[0-9a-f]{6})".toRegex()
+    private const val MAX_TEXT_SIZE = 80.0
 
     fun saveOutput(composable: @Composable () -> Unit, isRunning: MutableState<Boolean>): Any {
-        val frames: List<BufferedImage> = captureFrames(isRunning, composable, 2)
+        val frames = captureFrames(isRunning, composable, 2).toMutableList()
         val isImage = compareImages(frames[0], frames[1])
-        if (!isImage) frames + captureFrames(isRunning, composable, 3)
+        if (!isImage) frames += captureFrames(isRunning, composable, 3)
         if (isImage) return File("tooltip.png").outputStream().use { ImageIO.write(frames[0], "png", it) }
         val writer = AnimatedGIFWriter(true)
-        val stream = FileOutputStream("animated.gif")
+        val stream = FileOutputStream("tooltip.gif")
         writer.prepareForWrite(stream, -1, -1)
         frames.forEach { writer.writeFrame(stream, it, 50) }
         return writer.finishWrite(stream)
@@ -133,20 +136,10 @@ object Util {
         return image.getSubimage(0, 0, ++maxX, ++maxY)
     }
 
-    fun resizeBox(parent: Int, child: Int, calculating: MutableState<Boolean>, textSize: MutableState<Double>) {
-        if (child < 200) return
-        val diff = parent - child
-        val resizingFactor = when {
-            diff < 50 -> 0.95
-            diff > 200 -> 1.05
-            else -> 1.0
-        }
-        if (resizingFactor == 1.0) {
-            calculating.value = false
-            return
-        }
-        calculating.value = true
-        textSize.value *= resizingFactor
+    fun resizeBox(parent: Int, child: Int, textSize: MutableState<Double>) {
+        val diff = parent - child - 80
+        if (diff in 0..200) return
+        val scale = 1.25 * if (diff < 0) -1 else 1
+        textSize.value = min(textSize.value + scale, MAX_TEXT_SIZE)
     }
-
 }

@@ -94,7 +94,7 @@ fun TextComposable(text: String, textStyle: TextStyle, obfuscated: Boolean = fal
     val style = textStyle.copy(
         shadow = Shadow(
             Util.decreaseBrightness(textStyle.color, .5f),
-            Offset(4f, 4f)
+            Offset(Util.SHADOW_OFFSET, Util.SHADOW_OFFSET)
         )
     )
     if (!obfuscated) return Text(text, style = style)
