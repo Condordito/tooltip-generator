@@ -4,9 +4,7 @@ import androidx.compose.ui.graphics.toAwtImage
 import ir.mahozad.multiplatform.comshot.captureToImage
 import java.awt.Color
 import java.awt.image.BufferedImage
-import java.io.File
 import java.io.FileOutputStream
-import javax.imageio.ImageIO
 import kotlin.math.min
 
 object Util {
@@ -75,11 +73,11 @@ object Util {
 
     fun saveOutput(composable: @Composable () -> Unit, isRunning: MutableState<Boolean>): Any {
         val frames = captureFrames(isRunning, composable, 2).toMutableList()
-        val isImage = compareImages(frames[0], frames[1])
-        if (!isImage) frames += captureFrames(isRunning, composable, 3)
-        if (isImage) return File("tooltip.png").outputStream().use { ImageIO.write(frames[0], "png", it) }
         val writer = AnimatedGIFWriter(true)
         val stream = FileOutputStream("tooltip.gif")
+        val isImage = compareImages(frames[0], frames[1])
+        if (isImage) return writer.write(frames[0], stream)
+        frames += captureFrames(isRunning, composable, 3)
         writer.prepareForWrite(stream, -1, -1)
         frames.forEach { writer.writeFrame(stream, it, 50) }
         return writer.finishWrite(stream)
