@@ -6,18 +6,20 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.*
 import com.google.gson.JsonElement
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -25,6 +27,31 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+
+@Composable
+fun ScalableImageBox(
+    maxSize: IntSize,
+    composable: @Composable () -> Unit,
+    textSize: MutableState<Double>,
+) {
+    var scale by remember { mutableStateOf(1f) }
+    var computedSize by remember { mutableStateOf(IntSize(0, 0)) }
+    Box(Modifier
+        .onSizeChanged { computedSize = it }
+        .layout { measurable, constraints ->
+            val placeable = measurable.measure(constraints.copy(maxWidth = Int.MAX_VALUE, maxHeight = Int.MAX_VALUE))
+            layout(placeable.width, placeable.height) { placeable.placeRelative(x = 0, y = 0) }
+        }
+        .graphicsLayer {
+            textSize.value = Util.resizeText(size, IntSize(2048,1536), textSize.value)
+        }
+        .graphicsLayer {
+            scale = Util.computeScale(computedSize, maxSize, scale)
+            size.times(scale).let { computedSize = IntSize(it.width.toInt(), it.height.toInt()) }
+        }
+        .scale(scale)
+    ) { composable() }
+}
 
 @Composable
 fun ImageComposable(
@@ -37,10 +64,11 @@ fun ImageComposable(
         @Composable {
             Column(
                 modifier = Modifier
-                    .border(4.dp, Util.LORE_BG_COLOR)
-                    .border(7.dp, Util.LORE_BORDER_COLOR)
+                    .requiredSize(Int.MAX_VALUE.dp)
+                    .border(Util.TOOLTIP_BORDER_SIZE.div(2).dp, Util.LORE_BG_COLOR)
+                    .border(Util.TOOLTIP_BORDER_SIZE.dp, Util.LORE_BORDER_COLOR)
                     .background(Util.LORE_BG_COLOR)
-                    .padding(20.dp)
+                    .padding(Util.TOOLTIP_PADDING.dp)
             ) {
                 TooltipLine(title.value.takeIf { it.isNotBlank() } ?: Util.ITEM_TITLE, isRunning, textSize)
                 Spacer(Modifier.height(16.dp))
